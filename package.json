@@ -1,0 +1,22 @@
+{
+  "name": "cerebellum",
+  "version": "0.1.0",
+  "description": "Personal agent-readable second brain — Postgres + pgvector + MCP",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "mcp": "node dist/mcp/server.js",
+    "cli": "node --import tsx/esm src/cli/index.ts",
+    "dev:mcp": "node --import tsx/esm src/mcp/server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
