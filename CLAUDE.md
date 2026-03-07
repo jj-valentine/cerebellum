@@ -42,17 +42,12 @@ Copy `.env.example` → `.env` and fill in:
 
 ## MCP setup (Claude Code)
 
-After `npm run build`, add to `~/.claude/settings.json`:
-```json
-{
-  "mcpServers": {
-    "cerebellum": {
-      "command": "node",
-      "args": ["/Users/james/dev/new/cerebellum/dist/mcp/server.js"]
-    }
-  }
-}
+After `npm run build`:
+```bash
+claude mcp add --transport stdio --scope user cerebellum -- node /Users/james/dev/new/cerebellum/dist/mcp/server.js
 ```
+
+This stores the config in `~/.claude.json` and makes the server available globally across all Claude Code sessions.
 
 ## Dev workflow
 
