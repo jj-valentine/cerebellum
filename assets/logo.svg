@@ -1,53 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="500" height="120" viewBox="0 0 500 120">
   <defs>
     <style>
-      .sub { fill: #1d4ed8; }
-      @media (prefers-color-scheme: dark) { .sub { fill: #93c5fd; } }
+      .sub-v1 { fill: #1d4ed8; }
+      @media (prefers-color-scheme: dark) { .sub-v1 { fill: #93c5fd; } }
     </style>
-    <radialGradient id="glow-a" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#e879f9" stop-opacity="0.28"/>
+    <radialGradient id="ga-v1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e879f9" stop-opacity="0.32"/>
       <stop offset="100%" stop-color="#e879f9" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="glow-b" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.2"/>
+    <radialGradient id="gb-v1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%"   stop-color="#d946ef"/>
+    <linearGradient id="wm-v1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d946ef"/>
       <stop offset="100%" stop-color="#3b82f6"/>
     </linearGradient>
   </defs>
 
   <!-- Glow halos -->
-  <circle cx="54"  cy="60" r="34" fill="url(#glow-a)"/>
-  <circle cx="108" cy="34" r="22" fill="url(#glow-b)"/>
-  <circle cx="108" cy="86" r="22" fill="url(#glow-b)"/>
+  <circle cx="54"  cy="60" r="34" fill="url(#ga-v1)"/>
+  <circle cx="108" cy="34" r="22" fill="url(#gb-v1)"/>
+  <circle cx="108" cy="86" r="22" fill="url(#gb-v1)"/>
 
   <!-- Edges -->
-  <line x1="54"  y1="60" x2="108" y2="34"  stroke="#d946ef" stroke-width="1.5" stroke-opacity="0.55"/>
-  <line x1="54"  y1="60" x2="108" y2="86"  stroke="#d946ef" stroke-width="1.5" stroke-opacity="0.55"/>
-  <line x1="108" y1="34" x2="108" y2="86"  stroke="#a855f7" stroke-width="1"   stroke-opacity="0.3"/>
-  <line x1="108" y1="34" x2="148" y2="52"  stroke="#818cf8" stroke-width="1.5" stroke-opacity="0.55"/>
-  <line x1="108" y1="86" x2="148" y2="68"  stroke="#818cf8" stroke-width="1.5" stroke-opacity="0.55"/>
-  <line x1="148" y1="52" x2="148" y2="68"  stroke="#818cf8" stroke-width="1"   stroke-opacity="0.3"/>
+  <line x1="54"  y1="60" x2="108" y2="34" stroke="#d946ef" stroke-width="1.5" stroke-opacity="0.55"/>
+  <line x1="54"  y1="60" x2="108" y2="86" stroke="#d946ef" stroke-width="1.5" stroke-opacity="0.55"/>
+  <line x1="108" y1="34" x2="108" y2="86" stroke="#a855f7" stroke-width="1"   stroke-opacity="0.3"/>
+  <line x1="108" y1="34" x2="148" y2="52" stroke="#818cf8" stroke-width="1.5" stroke-opacity="0.55"/>
+  <line x1="108" y1="86" x2="148" y2="68" stroke="#818cf8" stroke-width="1.5" stroke-opacity="0.55"/>
+  <line x1="148" y1="52" x2="148" y2="68" stroke="#818cf8" stroke-width="1"   stroke-opacity="0.3"/>
 
   <!-- Node rings -->
-  <circle cx="54"  cy="60" r="9" fill="white" fill-opacity="0.08" stroke="#d946ef" stroke-width="2.5"/>
-  <circle cx="108" cy="34" r="6" fill="white" fill-opacity="0.06" stroke="#a855f7" stroke-width="2"/>
-  <circle cx="108" cy="86" r="6" fill="white" fill-opacity="0.06" stroke="#a855f7" stroke-width="2"/>
-  <circle cx="148" cy="52" r="5" fill="white" fill-opacity="0.06" stroke="#818cf8" stroke-width="1.5"/>
-  <circle cx="148" cy="68" r="5" fill="white" fill-opacity="0.06" stroke="#818cf8" stroke-width="1.5"/>
+  <circle cx="54"  cy="60" r="9" fill="none" stroke="#d946ef" stroke-width="2.5"/>
+  <circle cx="108" cy="34" r="6" fill="none" stroke="#a855f7" stroke-width="2"/>
+  <circle cx="108" cy="86" r="6" fill="none" stroke="#a855f7" stroke-width="2"/>
+  <circle cx="148" cy="52" r="5" fill="none" stroke="#818cf8" stroke-width="1.5"/>
+  <circle cx="148" cy="68" r="5" fill="none" stroke="#818cf8" stroke-width="1.5"/>
 
   <!-- Subtle ping from main node every 3.5s -->
   <circle cx="54" cy="60" r="9" fill="none" stroke="#d946ef" stroke-width="1">
     <animate attributeName="r"
-      values="9;26;26"
-      keyTimes="0;0.3;1"
+      values="9;26;26" keyTimes="0;0.3;1"
       calcMode="spline" keySplines="0.2 0 0.5 1; 0 0 1 1"
       dur="3.5s" repeatCount="indefinite"/>
     <animate attributeName="stroke-opacity"
-      values="0.38;0;0"
-      keyTimes="0;0.3;1"
+      values="0.38;0;0" keyTimes="0;0.3;1"
       calcMode="spline" keySplines="0.2 0 0.5 1; 0 0 1 1"
       dur="3.5s" repeatCount="indefinite"/>
   </circle>
@@ -63,10 +61,8 @@
   <text x="175" y="53"
         font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
         font-size="34" font-weight="700" letter-spacing="-1"
-        fill="url(#textGrad)">cerebellum</text>
-
-  <!-- Subtitle -->
-  <text x="177" y="76" class="sub"
+        fill="url(#wm-v1)">cerebellum</text>
+  <text x="177" y="76" class="sub-v1"
         font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
         font-size="12.5" font-weight="400" letter-spacing="0.3">personal agent-readable second brain</text>
 </svg>
