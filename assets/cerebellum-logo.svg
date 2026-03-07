@@ -1,8 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="280" viewBox="-90 -20 560 140">
   <defs>
     <style>
-      .sub-v5 { fill: #6d28d9; }
-      @media (prefers-color-scheme: dark) { .sub-v5 { fill: #c4b5fd; } }
+      .sub-v5   { fill: #6d28d9; }
+      .term-bg  { fill: #0a0014; }
+      @media (prefers-color-scheme: dark) {
+        .sub-v5  { fill: #c4b5fd; }
+        .term-bg { fill: #2d0060; }
+      }
     </style>
     <linearGradient id="term-v5" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%"   stop-color="#a855f7"/>
@@ -38,7 +42,7 @@
   <line x1="102" y1="50" x2="102" y2="70" stroke="#818cf8" stroke-width="1"  stroke-opacity="0.3"/>
 
   <!-- MAIN NODE: terminal window -->
-  <rect x="16" y="44" width="36" height="32" rx="4" fill="#0a0014"/>
+  <rect x="16" y="44" width="36" height="32" rx="4" class="term-bg"/>
   <rect x="16" y="44" width="36" height="32" rx="4" fill="none" stroke="url(#term-v5)" stroke-width="1.5"/>
   <!-- Mini traffic lights -->
   <circle cx="24" cy="52" r="2.5" fill="#ff5f57" opacity="0.9"/>
