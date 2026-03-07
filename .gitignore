@@ -5,3 +5,16 @@ dist/
 HANDOFF.md
 .DS_Store
 *.js.map
+
+# Local design artifacts — keep but don't commit
+assets/logo-alternates.html
+assets/logo-compare-preview.html
+assets/logo-v4-v5-preview.html
+assets/logo-v5-preview.html
+assets/logo-preview.html
+assets/logo-v4.svg
+assets/logo-v4b.svg
+assets/logo-variants-preview.png
+logo-preview.png
+logo-v1-animated.png
+logo-variants.png
