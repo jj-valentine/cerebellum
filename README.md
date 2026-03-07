@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.svg?v=2" alt="cerebellum" width="420"/>
+  <img src="assets/cerebellum-logo.svg" alt="cerebellum" width="420"/>
   <br/><br/>
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
