@@ -22,10 +22,12 @@ export async function insertThought(
 export async function searchByEmbedding(
   embedding: number[],
   limit = 10,
+  threshold = 0.7,
 ): Promise<ThoughtWithSimilarity[]> {
   const { data, error } = await supabase.rpc('search_thoughts', {
     query_embedding: `[${embedding.join(',')}]`,
     match_count: limit,
+    threshold,
   });
 
   if (error) throw new Error(`DB search failed: ${error.message}`);
@@ -56,33 +58,21 @@ export async function getStats(): Promise<{
   top_topics: Array<{ topic: string; count: number }>;
   top_people: Array<{ person: string; count: number }>;
 }> {
-  const { data, error } = await supabase
-    .from('thoughts')
-    .select('metadata');
+  const { data, error } = await supabase.rpc('get_stats');
 
   if (error) throw new Error(`DB stats failed: ${error.message}`);
 
-  const rows = (data ?? []) as { metadata: { type?: string; topics?: string[]; people?: string[] } }[];
+  const stats = data as {
+    total: number;
+    by_type: Record<string, number> | null;
+    top_topics: Array<{ topic: string; count: number }> | null;
+    top_people: Array<{ person: string; count: number }> | null;
+  };
 
-  const by_type: Record<string, number> = {};
-  const topic_counts: Record<string, number> = {};
-  const people_counts: Record<string, number> = {};
-
-  for (const { metadata: m } of rows) {
-    if (m.type) by_type[m.type] = (by_type[m.type] ?? 0) + 1;
-    for (const t of m.topics ?? []) topic_counts[t] = (topic_counts[t] ?? 0) + 1;
-    for (const p of m.people ?? []) people_counts[p] = (people_counts[p] ?? 0) + 1;
-  }
-
-  const top_topics = Object.entries(topic_counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([topic, count]) => ({ topic, count }));
-
-  const top_people = Object.entries(people_counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([person, count]) => ({ person, count }));
-
-  return { total: rows.length, by_type, top_topics, top_people };
+  return {
+    total:      stats.total      ?? 0,
+    by_type:    stats.by_type    ?? {},
+    top_topics: stats.top_topics ?? [],
+    top_people: stats.top_people ?? [],
+  };
 }

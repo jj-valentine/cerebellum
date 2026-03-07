@@ -17,34 +17,41 @@ export function registerListRecent(server: McpServer) {
       },
     },
     async ({ days, limit }) => {
-      const thoughts = await listRecent(days ?? 7, limit ?? 20);
+      try {
+        const thoughts = await listRecent(days ?? 7, limit ?? 20);
 
-      if (!thoughts.length) {
+        if (!thoughts.length) {
+          return {
+            content: [{ type: 'text', text: `No thoughts captured in the last ${days ?? 7} days.` }],
+          };
+        }
+
+        const lines = thoughts.map((t, i) => {
+          const m = t.metadata;
+          const date = new Date(t.created_at).toLocaleString();
+          return [
+            `[${i + 1}] ${date} — ${m.type}`,
+            `  ${t.content}`,
+            m.topics.length ? `  topics:  ${m.topics.join(', ')}` : '',
+            m.people.length ? `  people:  ${m.people.join(', ')}` : '',
+            m.action_items.length ? `  actions: ${m.action_items.join(' · ')}` : '',
+          ].filter(Boolean).join('\n');
+        });
+
         return {
-          content: [{ type: 'text', text: `No thoughts captured in the last ${days ?? 7} days.` }],
+          content: [
+            {
+              type: 'text',
+              text: `${thoughts.length} thoughts in the last ${days ?? 7} days:\n\n${lines.join('\n\n')}`,
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: 'text', text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+          isError: true,
         };
       }
-
-      const lines = thoughts.map((t, i) => {
-        const m = t.metadata;
-        const date = new Date(t.created_at).toLocaleString();
-        return [
-          `[${i + 1}] ${date} — ${m.type}`,
-          `  ${t.content}`,
-          m.topics.length ? `  topics:  ${m.topics.join(', ')}` : '',
-          m.people.length ? `  people:  ${m.people.join(', ')}` : '',
-          m.action_items.length ? `  actions: ${m.action_items.join(' · ')}` : '',
-        ].filter(Boolean).join('\n');
-      });
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `${thoughts.length} thoughts in the last ${days ?? 7} days:\n\n${lines.join('\n\n')}`,
-          },
-        ],
-      };
     },
   );
 }

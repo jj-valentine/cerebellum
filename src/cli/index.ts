@@ -19,6 +19,12 @@ import { generateEmbedding } from '../embeddings.js';
 const args = process.argv.slice(2);
 const command = args[0];
 
+function parseIntSafe(val: string | undefined, fallback: number): number {
+  const n = parseInt(val ?? '', 10);
+  if (isNaN(n) || n < 0) return fallback;
+  return n;
+}
+
 function print_help() {
   console.log(`
 cerebellum — personal second brain CLI
@@ -118,13 +124,13 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
   const query = args[1];
   if (!query) { console.error('Usage: brain search "query"'); process.exit(1); }
   const limitFlag = args.indexOf('--limit');
-  const limit = limitFlag >= 0 ? parseInt(args[limitFlag + 1] ?? '10') : 10;
+  const limit = limitFlag >= 0 ? parseIntSafe(args[limitFlag + 1], 10) : 10;
   await cmd_search(query, limit);
 } else if (command === 'recent') {
   const daysFlag  = args.indexOf('--days');
   const limitFlag = args.indexOf('--limit');
-  const days  = daysFlag  >= 0 ? parseInt(args[daysFlag  + 1] ?? '7')  : 7;
-  const limit = limitFlag >= 0 ? parseInt(args[limitFlag + 1] ?? '20') : 20;
+  const days  = daysFlag  >= 0 ? parseIntSafe(args[daysFlag  + 1], 7)  : 7;
+  const limit = limitFlag >= 0 ? parseIntSafe(args[limitFlag + 1], 20) : 20;
   await cmd_recent(days, limit);
 } else if (command === 'stats') {
   await cmd_stats();

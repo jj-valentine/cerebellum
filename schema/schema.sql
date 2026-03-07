@@ -38,13 +38,15 @@ alter table thoughts enable row level security;
 -- Allow service role full access (used by the MCP server and capture pipeline)
 create policy "service role full access"
   on thoughts
+  to service_role
   using (true)
   with check (true);
 
 -- 6. Semantic search function (used by db.ts searchByEmbedding)
 create or replace function search_thoughts(
   query_embedding vector(1536),
-  match_count     int default 10
+  match_count     int   default 10,
+  threshold       float default 0.7
 )
 returns table (
   id          uuid,
@@ -62,6 +64,51 @@ as $$
     created_at,
     1 - (embedding <=> query_embedding) as similarity
   from thoughts
+  where 1 - (embedding <=> query_embedding) >= threshold
   order by embedding <=> query_embedding
   limit match_count;
+$$;
+
+-- 7. Stats aggregation function (used by db.ts getStats)
+create or replace function get_stats()
+returns json
+language sql stable
+as $$
+  select json_build_object(
+    'total', (select count(*) from thoughts),
+    'by_type', coalesce(
+      (select json_object_agg(type, cnt)
+       from (
+         select metadata->>'type' as type, count(*) as cnt
+         from thoughts
+         where metadata->>'type' is not null
+         group by 1
+       ) t),
+      '{}'::json
+    ),
+    'top_topics', coalesce(
+      (select json_agg(row_to_json(t))
+       from (
+         select topic, count(*)::int as count
+         from thoughts,
+              jsonb_array_elements_text(coalesce(metadata->'topics', '[]'::jsonb)) as topic
+         group by 1
+         order by count desc
+         limit 10
+       ) t),
+      '[]'::json
+    ),
+    'top_people', coalesce(
+      (select json_agg(row_to_json(p))
+       from (
+         select person, count(*)::int as count
+         from thoughts,
+              jsonb_array_elements_text(coalesce(metadata->'people', '[]'::jsonb)) as person
+         group by 1
+         order by count desc
+         limit 10
+       ) p),
+      '[]'::json
+    )
+  );
 $$;
