@@ -1,7 +1,10 @@
 import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Load .env from project root
-config();
+// Resolve .env relative to this file, not cwd — needed when spawned by MCP clients
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: join(__dirname, '../.env') });
 
 function require_env(name: string): string {
   const val = process.env[name];
