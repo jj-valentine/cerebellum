@@ -2,5 +2,6 @@ node_modules/
 dist/
 .env
 *.env.local
+HANDOFF.md
 .DS_Store
 *.js.map
