@@ -21,11 +21,12 @@ create table if not exists thoughts (
 --   "action_items": string[]    -- implied next actions
 -- }
 
--- 3. Cosine similarity index (IVFFlat)
--- lists = 100 is appropriate for up to ~1M rows; lower if starting small
+-- 3. Cosine similarity index (HNSW)
+-- HNSW builds incrementally — safe to create on empty tables, no minimum row count.
+-- m=16, ef_construction=64 are good defaults for personal use (up to ~100K thoughts).
 create index if not exists thoughts_embedding_idx
-  on thoughts using ivfflat (embedding vector_cosine_ops)
-  with (lists = 100);
+  on thoughts using hnsw (embedding vector_cosine_ops)
+  with (m = 16, ef_construction = 64);
 
 -- 4. Index for recency queries
 create index if not exists thoughts_created_at_idx
