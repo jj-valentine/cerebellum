@@ -15,8 +15,15 @@ export function registerCapture(server: McpServer) {
       },
     },
     async ({ content }) => {
-      const result = await captureThought(content);
-      return { content: [{ type: 'text', text: formatConfirmation(result) }] };
+      try {
+        const result = await captureThought(content);
+        return { content: [{ type: 'text', text: formatConfirmation(result) }] };
+      } catch (err) {
+        return {
+          content: [{ type: 'text', text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+          isError: true,
+        };
+      }
     },
   );
 }

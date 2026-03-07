@@ -19,5 +19,8 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   const json = await response.json() as { data: Array<{ embedding: number[] }> };
+  if (!json.data || json.data.length === 0) {
+    throw new Error(`Embeddings API returned empty data (status: ${response.status})`);
+  }
   return json.data[0].embedding;
 }

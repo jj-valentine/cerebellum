@@ -10,35 +10,42 @@ export function registerStats(server: McpServer) {
         'most-used topics, and most-mentioned people.',
     },
     async () => {
-      const s = await getStats();
+      try {
+        const s = await getStats();
 
-      const type_lines = Object.entries(s.by_type)
-        .sort((a, b) => b[1] - a[1])
-        .map(([type, count]) => `  ${type.padEnd(14)} ${count}`)
-        .join('\n');
+        const type_lines = Object.entries(s.by_type)
+          .sort((a, b) => b[1] - a[1])
+          .map(([type, count]) => `  ${type.padEnd(14)} ${count}`)
+          .join('\n');
 
-      const topic_lines = s.top_topics.length
-        ? s.top_topics.map(t => `  ${t.topic.padEnd(20)} ${t.count}`).join('\n')
-        : '  (none yet)';
+        const topic_lines = s.top_topics.length
+          ? s.top_topics.map(t => `  ${t.topic.padEnd(20)} ${t.count}`).join('\n')
+          : '  (none yet)';
 
-      const people_lines = s.top_people.length
-        ? s.top_people.map(p => `  ${p.person.padEnd(20)} ${p.count}`).join('\n')
-        : '  (none yet)';
+        const people_lines = s.top_people.length
+          ? s.top_people.map(p => `  ${p.person.padEnd(20)} ${p.count}`).join('\n')
+          : '  (none yet)';
 
-      const text = [
-        `Total thoughts: ${s.total}`,
-        '',
-        'By type:',
-        type_lines || '  (none)',
-        '',
-        'Top topics:',
-        topic_lines,
-        '',
-        'Top people:',
-        people_lines,
-      ].join('\n');
+        const text = [
+          `Total thoughts: ${s.total}`,
+          '',
+          'By type:',
+          type_lines || '  (none)',
+          '',
+          'Top topics:',
+          topic_lines,
+          '',
+          'Top people:',
+          people_lines,
+        ].join('\n');
 
-      return { content: [{ type: 'text', text }] };
+        return { content: [{ type: 'text', text }] };
+      } catch (err) {
+        return {
+          content: [{ type: 'text', text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+          isError: true,
+        };
+      }
     },
   );
 }

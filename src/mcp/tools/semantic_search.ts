@@ -17,30 +17,37 @@ export function registerSemanticSearch(server: McpServer) {
       },
     },
     async ({ query, limit }) => {
-      const embedding = await generateEmbedding(query);
-      const results = await searchByEmbedding(embedding, limit ?? 10);
+      try {
+        const embedding = await generateEmbedding(query);
+        const results = await searchByEmbedding(embedding, limit ?? 10);
 
-      if (!results.length) {
+        if (!results.length) {
+          return {
+            content: [{ type: 'text', text: 'No matching thoughts found.' }],
+          };
+        }
+
+        const lines = results.map((t, i) => {
+          const m = t.metadata;
+          const date = new Date(t.created_at).toLocaleDateString();
+          const sim = t.similarity ? ` (${(t.similarity * 100).toFixed(0)}% match)` : '';
+          return [
+            `[${i + 1}]${sim} — ${date} — ${m.type}`,
+            `  ${t.content}`,
+            m.topics.length  ? `  topics:  ${m.topics.join(', ')}` : '',
+            m.people.length  ? `  people:  ${m.people.join(', ')}` : '',
+          ].filter(Boolean).join('\n');
+        });
+
         return {
-          content: [{ type: 'text', text: 'No matching thoughts found.' }],
+          content: [{ type: 'text', text: lines.join('\n\n') }],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: 'text', text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+          isError: true,
         };
       }
-
-      const lines = results.map((t, i) => {
-        const m = t.metadata;
-        const date = new Date(t.created_at).toLocaleDateString();
-        const sim = t.similarity ? ` (${(t.similarity * 100).toFixed(0)}% match)` : '';
-        return [
-          `[${i + 1}]${sim} — ${date} — ${m.type}`,
-          `  ${t.content}`,
-          m.topics.length  ? `  topics:  ${m.topics.join(', ')}` : '',
-          m.people.length  ? `  people:  ${m.people.join(', ')}` : '',
-        ].filter(Boolean).join('\n');
-      });
-
-      return {
-        content: [{ type: 'text', text: lines.join('\n\n') }],
-      };
     },
   );
 }

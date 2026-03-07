@@ -42,20 +42,27 @@ export async function classifyThought(content: string): Promise<ThoughtMetadata>
   }
 
   const json = await response.json() as {
-    choices: Array<{ message: { content: string } }>
+    choices: Array<{ message: { content: string | null } }>
   };
+
+  if (!json.choices?.length || json.choices[0].message.content === null) {
+    console.warn('[classify] API returned no choices or null content — using default metadata');
+    return { type: 'observation', topics: [], people: [], action_items: [] };
+  }
+
+  const VALID_TYPES: ThoughtMetadata['type'][] = ['observation', 'task', 'idea', 'reference', 'person_note'];
 
   try {
     const parsed = JSON.parse(json.choices[0].message.content) as ThoughtMetadata;
-    // Ensure arrays are always present
+    const rawType = (parsed.type ?? 'observation').toLowerCase() as ThoughtMetadata['type'];
     return {
-      type:         parsed.type         ?? 'observation',
+      type:         VALID_TYPES.includes(rawType) ? rawType : 'observation',
       topics:       parsed.topics        ?? [],
       people:       parsed.people        ?? [],
       action_items: parsed.action_items  ?? [],
     };
   } catch {
-    // Fallback if JSON parse fails
+    console.warn('[classify] JSON parse failed — using default metadata');
     return { type: 'observation', topics: [], people: [], action_items: [] };
   }
 }

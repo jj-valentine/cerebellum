@@ -1,6 +1,9 @@
 import { generateEmbedding } from './embeddings.js';
 import { classifyThought } from './classify.js';
 import { insertThought } from './db.js';
+import { withRetry } from './utils/retry.js';
+
+const MAX_CHARS = 30_000;
 import type { Thought } from './types.js';
 
 export interface CaptureResult {
@@ -9,16 +12,21 @@ export interface CaptureResult {
 }
 
 export async function captureThought(content: string): Promise<CaptureResult> {
-  const trimmed = content.trim();
+  let trimmed = content.trim();
   if (!trimmed) throw new Error('Content cannot be empty');
+
+  if (trimmed.length > MAX_CHARS) {
+    console.warn(`[capture] Content truncated from ${trimmed.length} to ${MAX_CHARS} chars`);
+    trimmed = trimmed.slice(0, MAX_CHARS);
+  }
 
   const start = Date.now();
 
-  // Run embedding and classification in parallel
-  const [embedding, metadata] = await Promise.all([
+  // Run embedding and classification in parallel, with retry on transient failures
+  const [embedding, metadata] = await withRetry(() => Promise.all([
     generateEmbedding(trimmed),
     classifyThought(trimmed),
-  ]);
+  ]));
 
   const thought = await insertThought(trimmed, embedding, metadata);
   const elapsed_ms = Date.now() - start;
