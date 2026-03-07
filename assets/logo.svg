@@ -4,6 +4,10 @@
       <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.3"/>
       <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
   </defs>
 
   <!-- Glow halos -->
@@ -35,7 +39,7 @@
 
   <!-- Wordmark -->
   <text x="175" y="53" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-        font-size="34" font-weight="700" letter-spacing="-1" fill="#f5f3ff">cerebellum</text>
+        font-size="34" font-weight="700" letter-spacing="-1" fill="url(#textGrad)">cerebellum</text>
   <text x="176" y="75" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-        font-size="13" font-weight="400" letter-spacing="0.5" fill="#7c3aed">personal agent-readable second brain</text>
+        font-size="13" font-weight="400" letter-spacing="0.5" fill="#6d28d9">personal agent-readable second brain</text>
 </svg>
