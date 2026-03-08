@@ -4,15 +4,19 @@ import type { Thought, ThoughtMetadata, ThoughtWithSimilarity } from './types.js
 
 const supabase = createClient(cfg.supabase.url, cfg.supabase.serviceKey);
 
+const THOUGHT_COLUMNS = 'id, content, metadata, source, embedding_model, parent_id, superseded_by, confidence, privacy_tier, created_at';
+
 export async function insertThought(
   content: string,
   embedding: number[],
   metadata: ThoughtMetadata,
+  source: string,
+  embeddingModel: string,
 ): Promise<Thought> {
   const { data, error } = await supabase
     .from('thoughts')
-    .insert({ content, embedding: `[${embedding.join(',')}]`, metadata })
-    .select('id, content, metadata, created_at')
+    .insert({ content, embedding: `[${embedding.join(',')}]`, metadata, source, embedding_model: embeddingModel })
+    .select(THOUGHT_COLUMNS)
     .single();
 
   if (error) throw new Error(`DB insert failed: ${error.message}`);
@@ -43,7 +47,7 @@ export async function listRecent(
 
   const { data, error } = await supabase
     .from('thoughts')
-    .select('id, content, metadata, created_at')
+    .select(THOUGHT_COLUMNS)
     .gte('created_at', since.toISOString())
     .order('created_at', { ascending: false })
     .limit(limit);

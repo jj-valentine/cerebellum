@@ -2,6 +2,7 @@ import { generateEmbedding } from './embeddings.js';
 import { classifyThought } from './classify.js';
 import { insertThought } from './db.js';
 import { withRetry } from './utils/retry.js';
+import { cfg } from './config.js';
 
 const MAX_CHARS = 30_000;
 import type { Thought } from './types.js';
@@ -11,7 +12,7 @@ export interface CaptureResult {
   elapsed_ms: number;
 }
 
-export async function captureThought(content: string): Promise<CaptureResult> {
+export async function captureThought(content: string, source = 'cli'): Promise<CaptureResult> {
   let trimmed = content.trim();
   if (!trimmed) throw new Error('Content cannot be empty');
 
@@ -28,7 +29,7 @@ export async function captureThought(content: string): Promise<CaptureResult> {
     classifyThought(trimmed),
   ]));
 
-  const thought = await insertThought(trimmed, embedding, metadata);
+  const thought = await insertThought(trimmed, embedding, metadata, source, cfg.openrouter.embeddingModel);
   const elapsed_ms = Date.now() - start;
 
   return { thought, elapsed_ms };
