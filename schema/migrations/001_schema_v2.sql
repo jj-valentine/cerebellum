@@ -9,8 +9,10 @@ alter table thoughts add column if not exists superseded_by   uuid  references t
 alter table thoughts add column if not exists confidence      float not null default 1.0;
 alter table thoughts add column if not exists privacy_tier    text  not null default 'private';
 
--- Update search_thoughts() to return source
-create or replace function search_thoughts(
+-- Drop first — cannot change return type with CREATE OR REPLACE
+drop function if exists search_thoughts(vector, integer, double precision);
+
+create function search_thoughts(
   query_embedding vector(1536),
   match_count     int   default 10,
   threshold       float default 0.7
