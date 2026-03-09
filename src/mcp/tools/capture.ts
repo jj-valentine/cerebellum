@@ -16,7 +16,7 @@ export function registerCapture(server: McpServer) {
     },
     async ({ content }) => {
       try {
-        const result = await captureThought(content);
+        const result = await captureThought(content, 'mcp');
         return { content: [{ type: 'text', text: formatConfirmation(result) }] };
       } catch (err) {
         return {

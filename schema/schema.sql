@@ -6,11 +6,17 @@ create extension if not exists vector;
 
 -- 2. Thoughts table
 create table if not exists thoughts (
-  id          uuid primary key default gen_random_uuid(),
-  content     text not null,
-  embedding   vector(1536),
-  metadata    jsonb default '{}' not null,
-  created_at  timestamptz default now() not null
+  id              uuid        primary key default gen_random_uuid(),
+  content         text        not null,
+  embedding       vector(1536),
+  metadata        jsonb       not null default '{}',
+  source          text        not null default 'cli',
+  embedding_model text        not null default 'openai/text-embedding-3-small',
+  parent_id       uuid        references thoughts(id),
+  superseded_by   uuid        references thoughts(id),
+  confidence      float       not null default 1.0,
+  privacy_tier    text        not null default 'private',
+  created_at      timestamptz not null default now()
 );
 
 -- metadata shape:
@@ -52,6 +58,7 @@ returns table (
   id          uuid,
   content     text,
   metadata    jsonb,
+  source      text,
   created_at  timestamptz,
   similarity  float
 )
@@ -61,6 +68,7 @@ as $$
     id,
     content,
     metadata,
+    source,
     created_at,
     1 - (embedding <=> query_embedding) as similarity
   from thoughts
