@@ -49,7 +49,7 @@ router.get('/search', async (req: Request, res: Response) => {
 
     // Parse optional params with defaults
     const searchLimit = limit ? parseInt(limit as string, 10) : 10;
-    const searchThreshold = threshold ? parseFloat(threshold as string) : 0.7;
+    const searchThreshold = threshold ? parseFloat(threshold as string) : 0.5;
 
     // Validate parsed values
     if (isNaN(searchLimit) || searchLimit < 1) {
