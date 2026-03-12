@@ -1,6 +1,6 @@
 import express from 'express';
 import { bearerAuth } from './auth.js';
-import apiRouter from './routes/api.js';
+import { router as apiRouter } from './routes/api.js';
 import { handleMcpRequest } from './mcp.js';
 
 export function startServer(port: number) {
