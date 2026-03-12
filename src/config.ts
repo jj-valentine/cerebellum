@@ -26,4 +26,8 @@ export const cfg = {
     embeddingModel:  optional_env('EMBEDDING_MODEL',  'openai/text-embedding-3-small'),
     classifierModel: optional_env('CLASSIFIER_MODEL', 'openai/gpt-4o-mini'),
   },
+  http: {
+    apiKey: optional_env('CEREBELLUM_API_KEY', ''),
+    port:   parseInt(optional_env('CEREBELLUM_PORT', '4891'), 10),
+  },
 } as const;
