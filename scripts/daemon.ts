@@ -92,10 +92,11 @@ async function status(): Promise<void> {
   console.log(describe.stdout || describe.stderr);
 
   const port = process.env.CEREBELLUM_PORT ?? '4891';
-  const health = await execFileNoThrow('curl', ['-sf', `http://127.0.0.1:${port}/api/health`]);
-  if (health.ok) {
-    console.log('\nHealth check:', health.stdout);
-  } else {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/health`);
+    const body = await res.text();
+    console.log('\nHealth check:', body);
+  } catch {
     console.log('\nHealth check: FAILED (daemon may not be running)');
   }
 }
