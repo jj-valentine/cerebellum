@@ -3,16 +3,28 @@ import { classifyThought } from './classify.js';
 import { insertThought } from './db.js';
 import { withRetry } from './utils/retry.js';
 import { cfg } from './config.js';
+import type { Thought, ThoughtType } from './types.js';
 
 const MAX_CHARS = 30_000;
-import type { Thought } from './types.js';
 
 export interface CaptureResult {
   thought: Thought;
   elapsed_ms: number;
 }
 
-export async function captureThought(content: string, source = 'cli'): Promise<CaptureResult> {
+/**
+ * Embed, classify, and store a thought.
+ *
+ * @param content      The thought text.
+ * @param source       Origin tag (cli | mcp | hook | …).
+ * @param type_override  When set, overrides the LLM classifier's type assignment.
+ *                       Use 'veto' for axiom captures (permanent directives).
+ */
+export async function captureThought(
+  content:       string,
+  source         = 'cli',
+  type_override?: ThoughtType,
+): Promise<CaptureResult> {
   let trimmed = content.trim();
   if (!trimmed) throw new Error('Content cannot be empty');
 
@@ -28,6 +40,11 @@ export async function captureThought(content: string, source = 'cli'): Promise<C
     generateEmbedding(trimmed),
     classifyThought(trimmed),
   ]));
+
+  // Override type if specified (e.g. axiom / veto)
+  if (type_override) {
+    metadata.type = type_override;
+  }
 
   const thought = await insertThought(trimmed, embedding, metadata, source, cfg.openrouter.embeddingModel);
   const elapsed_ms = Date.now() - start;
