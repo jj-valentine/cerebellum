@@ -173,11 +173,12 @@ export async function runReview(): Promise<void> {
 
   try {
     for (let i = 0; i < ready.length; i++) {
-      // Re-read queue each loop iteration — entries are removed as we go
+      // Re-read queue each iteration; always take index 0 — entries are removed
+      // as we go, so incrementing i against a shrinking array would skip entries.
       const current  = readQueue();
       const readyNow = current.filter(e => e.status === 'evaluated' || e.status === 'gate-failed');
-      if (i >= readyNow.length) break;
-      await resolveEntry(iface, readyNow[i], i, ready.length);
+      if (readyNow.length === 0) break;
+      await resolveEntry(iface, readyNow[0], i, ready.length);
     }
   } finally {
     iface.close();

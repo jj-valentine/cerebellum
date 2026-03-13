@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { enqueue, pendingCount } from '../../gatekeeper/queue.js';
+import { enqueue, readQueue } from '../../gatekeeper/queue.js';
 import { evaluate } from '../../gatekeeper/index.js';
 
 export function registerCapture(server: McpServer) {
@@ -31,11 +31,11 @@ export function registerCapture(server: McpServer) {
           console.error('[gate] MCP background evaluation error:', err),
         );
 
-        const pending = pendingCount() + 1;
+        const total = readQueue().length; // entry already written; count all statuses
         return {
           content: [{
             type: 'text' as const,
-            text: `✓ Queued (${pending} pending review)\n  Run 'brain review' to evaluate and store.`,
+            text: `✓ Queued (${total} in queue)\n  Run 'brain review' to evaluate and store.`,
           }],
         };
       } catch (err) {

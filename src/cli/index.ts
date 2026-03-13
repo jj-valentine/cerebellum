@@ -17,7 +17,7 @@
 
 import { searchByEmbedding, listRecent, getStats } from '../db.js';
 import { generateEmbedding } from '../embeddings.js';
-import { enqueue, pendingCount } from '../gatekeeper/queue.js';
+import { enqueue, readQueue } from '../gatekeeper/queue.js';
 import { evaluate } from '../gatekeeper/index.js';
 import { runReview } from '../gatekeeper/review.js';
 
@@ -55,12 +55,12 @@ async function cmd_capture(text: string, is_axiom = false) {
     console.error('[gate] background evaluation error:', err),
   );
 
-  const pending = pendingCount() + 1; // entry is still 'pending' state
+  const total = readQueue().length; // entry already written; count all statuses
 
   if (is_axiom) {
-    console.log(`⚡ Queued as axiom (${pending} pending review)`);
+    console.log(`⚡ Queued as axiom (${total} in queue)`);
   } else {
-    console.log(`✓ Queued (${pending} pending review)`);
+    console.log(`✓ Queued (${total} in queue)`);
   }
   console.log(`  Run 'brain review' to evaluate and store.`);
 }

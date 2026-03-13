@@ -70,6 +70,9 @@ async function openrouterChat(
   const data = await res.json() as {
     choices: Array<{ message: { content: string } }>;
   };
+  if (!data.choices?.[0]?.message?.content) {
+    throw new Error('OpenRouter returned no choices in response');
+  }
   return data.choices[0].message.content;
 }
 

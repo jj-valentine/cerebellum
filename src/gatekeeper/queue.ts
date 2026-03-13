@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs';
-import { tmpdir }  from 'os';
 import { join, dirname } from 'path';
 import { randomUUID } from 'crypto';
 import type { QueueEntry } from './types.js';
@@ -33,7 +32,7 @@ export function readQueue(): QueueEntry[] {
 function writeQueue(entries: QueueEntry[]): void {
   const path = cfg.gate.queuePath;
   ensureDir(path);
-  const tmp = join(tmpdir(), `cerebellum-queue-${Date.now()}.tmp`);
+  const tmp = join(dirname(path), `.cerebellum-queue-${Date.now()}.tmp`);
   writeFileSync(tmp, JSON.stringify(entries, null, 2), 'utf-8');
   renameSync(tmp, path);
 }
@@ -85,7 +84,8 @@ export function removeEntry(id: string): void {
   writeQueue(entries.filter(e => e.id !== id));
 }
 
-export function pendingCount(): number {
+/** Items ready for user review (evaluated or gate-failed). */
+export function reviewableCount(): number {
   return readQueue().filter(
     e => e.status === 'evaluated' || e.status === 'gate-failed',
   ).length;
