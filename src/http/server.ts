@@ -12,10 +12,12 @@ export function startServer(port: number) {
     res.json({ status: 'ok', uptime: process.uptime(), version: '0.1.0' });
   });
 
-  // All other routes require bearer auth
+  // MCP endpoint — no auth (standard MCP clients cannot inject Bearer tokens)
+  app.post('/mcp', handleMcpRequest);
+
+  // REST API — bearer auth required
   app.use(bearerAuth);
   app.use('/api', apiRouter);
-  app.post('/mcp', handleMcpRequest);
 
   // Bind to loopback only — no access from other hosts on the network
   return app.listen(port, '127.0.0.1', () => {
