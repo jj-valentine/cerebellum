@@ -20,6 +20,7 @@ import { generateEmbedding } from '../embeddings.js';
 import { enqueue, readQueue } from '../gatekeeper/queue.js';
 import { evaluate } from '../gatekeeper/index.js';
 import { runReview } from '../gatekeeper/review.js';
+import { cmd_seed, cmd_seed_undo } from './seed.js';
 
 const args    = process.argv.slice(2);
 const command = args[0];
@@ -41,6 +42,9 @@ cerebellum — personal second brain CLI
   memo search "query"              Semantic search
   memo recent                      List recent thoughts (--days N  --limit N)
   memo stats                       Show thinking patterns
+  memo seed <file.json>            Batch capture from JSON (direct to DB)
+  memo seed --dry-run <file.json>  Preview entries without writing
+  memo seed --undo                 Delete all seeded thoughts
   memo help                        Show this message
 `.trim());
 }
@@ -168,6 +172,16 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
 
 } else if (command === 'stats') {
   await cmd_stats();
+
+} else if (command === 'seed') {
+  if (args.includes('--undo')) {
+    await cmd_seed_undo();
+  } else {
+    const dryRun = args.includes('--dry-run');
+    const file = args.slice(1).find(a => !a.startsWith('--'));
+    if (!file) { console.error('Usage: memo seed [--dry-run] <file.json>'); process.exit(1); }
+    await cmd_seed(file, dryRun);
+  }
 
 } else if (command === '--axiom') {
   const text = args.slice(1).join(' ');

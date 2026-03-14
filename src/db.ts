@@ -56,6 +56,17 @@ export async function listRecent(
   return (data ?? []) as Thought[];
 }
 
+export async function deleteBySource(sourcePrefix: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('thoughts')
+    .delete()
+    .like('source', `${sourcePrefix}%`)
+    .select('id');
+
+  if (error) throw new Error(`DB delete failed: ${error.message}`);
+  return data?.length ?? 0;
+}
+
 export async function getStats(): Promise<{
   total: number;
   by_type: Record<string, number>;
