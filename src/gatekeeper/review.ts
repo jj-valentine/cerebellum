@@ -1,5 +1,6 @@
 import { select, input } from '@inquirer/prompts';
 import { readQueue, removeEntry } from './queue.js';
+import { evaluate } from './index.js';
 import { captureThought } from '../capture.js';
 import type { QueueEntry } from './types.js';
 
@@ -115,6 +116,7 @@ async function resolveEntry(
 
   const choices = isFailed
     ? [
+        { name: '↺ Retry gate', value: 'retry' },
         { name: '✓ Keep as-is', value: 'keep'  },
         { name: '✎ Edit',       value: 'edit'  },
         { name: '★ Axiom',      value: 'axiom' },
@@ -132,6 +134,18 @@ async function resolveEntry(
   const choice = await select({ message: 'Decision:', choices });
 
   switch (choice) {
+
+    case 'retry': {
+      console.log('  ↺ Re-evaluating…');
+      await evaluate(entry);
+      const updated = readQueue().find(e => e.id === entry.id);
+      if (!updated) return false;
+      if (updated.status === 'evaluated') {
+        return resolveEntry(updated, index, total);
+      }
+      console.log('  ⚠  Re-evaluation failed again. Make a manual call.');
+      return resolveEntry({ ...updated }, index, total);
+    }
 
     case 'keep': {
       const content = entry.verdict?.reformulation
