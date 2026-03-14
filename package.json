@@ -15,6 +15,7 @@
     "daemon:logs": "pm2 logs cerebellum-http"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.3.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@supabase/supabase-js": "^2.45.0",
     "dotenv": "^16.4.5",

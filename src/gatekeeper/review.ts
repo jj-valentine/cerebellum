@@ -1,4 +1,4 @@
-import * as rl from 'readline/promises';
+import { select, confirm, input } from '@inquirer/prompts';
 import { readQueue, removeEntry } from './queue.js';
 import { captureThought } from '../capture.js';
 import type { QueueEntry } from './types.js';
@@ -12,23 +12,23 @@ function displayEntry(entry: QueueEntry, index: number, total: number): void {
 
   separator();
   console.log(`[${index + 1}/${total}]  ${source} captured:`);
-  console.log(`       "${content}"`);
+  console.log(`\n       "${content}"\n`);
 
   if (capture_reason) {
-    console.log(`\n  Capture reason: ${capture_reason}`);
+    console.log(`  Capture reason: ${capture_reason}`);
   }
 
   if (is_axiom) {
-    console.log(`\n  ⚡ Pre-flagged as axiom by you.`);
+    console.log(`  ⚡ Pre-flagged as axiom by you.`);
   }
 
   if (status === 'gate-failed') {
-    console.log(`\n  ⚠  Gate evaluation failed (OpenRouter unavailable). Make a manual call.`);
+    console.log(`  ⚠  Gate evaluation failed — make a manual call.`);
     return;
   }
 
   if (!verdict) {
-    console.log(`\n  ⏳ Still evaluating — try again in a moment.`);
+    console.log(`  ⏳ Still evaluating — try again in a moment.`);
     return;
   }
 
@@ -36,116 +36,149 @@ function displayEntry(entry: QueueEntry, index: number, total: number): void {
   if (verdict.contradiction) {
     const { severity, summary } = verdict.contradiction;
     if (severity === 'veto_violation') {
-      console.log(`\n  🚨 AXIOM VIOLATION: ${summary}`);
+      console.log(`  🚨 AXIOM VIOLATION: ${summary}`);
     } else if (severity === 'hard') {
-      console.log(`\n  ⚠  CONTRADICTION (hard): ${summary}`);
+      console.log(`  ⚠  CONTRADICTION (hard): ${summary}`);
     } else {
-      console.log(`\n  ↕  Soft contradiction: ${summary}`);
+      console.log(`  ↕  Soft contradiction: ${summary}`);
     }
   }
 
   // Score + analysis
-  console.log(`\n  Gatekeeper [${verdict.quality_score}/10 — ${verdict.label}]`);
-  console.log(`  ${verdict.analysis}`);
+  const score = verdict.quality_score;
+  const bar   = '█'.repeat(score) + '░'.repeat(10 - score);
+  console.log(`  Gatekeeper [${score}/10 — ${verdict.label}]`);
+  console.log(`  ${bar}`);
+  console.log(`\n  ${verdict.analysis}`);
 
   if (verdict.reformulation) {
-    console.log(`\n  → Reformulated: "${verdict.reformulation}"`);
+    console.log(`\n  → Suggested: "${verdict.reformulation}"`);
   }
 
   if (verdict.adversarial_note) {
     console.log(`\n  Adversarial: ${verdict.adversarial_note}`);
   }
+
+  console.log('');
 }
 
 // ─── reformulation prompt ─────────────────────────────────────────────────────
 
-async function offerReformulation(
-  iface:         rl.Interface,
-  reformulation: string,
-  original:      string,
-): Promise<string> {
-  const answer = await iface.question(`\n  Use reformulated version? [y/n] `);
-  return answer.trim().toLowerCase() === 'y' ? reformulation : original;
+async function chooseContent(entry: QueueEntry): Promise<string> {
+  if (!entry.verdict?.reformulation) return entry.content;
+
+  const useReformulated = await confirm({
+    message: 'Use the suggested reformulation?',
+    default: true,
+  });
+
+  return useReformulated ? entry.verdict.reformulation : entry.content;
 }
 
 // ─── edit loop ────────────────────────────────────────────────────────────────
 
 async function runEditLoop(
-  iface:   rl.Interface,
-  entry:   QueueEntry,
+  entry: QueueEntry,
 ): Promise<{ content: string; is_axiom: boolean } | null> {
-  console.log('\n  Describe the improvement or paste a new version:');
-  const edited = await iface.question('  > ');
-  if (!edited.trim()) return null;
 
-  const finalContent = edited.trim();
-  console.log(`\n  Using: "${finalContent}"`);
-  const confirm = await iface.question('  [keep]  [drop]  [axiom]: ');
-  const action  = confirm.trim().toLowerCase();
+  const edited = await input({
+    message: 'Paste improved version:',
+    validate: v => v.trim().length > 0 || 'Cannot be empty',
+  });
 
-  if (action === 'keep')  return { content: finalContent, is_axiom: false };
-  if (action === 'axiom') return { content: finalContent, is_axiom: true  };
-  return null; // drop
+  console.log(`\n  Using: "${edited.trim()}"\n`);
+
+  const action = await select({
+    message: 'What to do with the edited version?',
+    choices: [
+      { name: '✓ Keep', value: 'keep' },
+      { name: '⚡ Axiom', value: 'axiom' },
+      { name: '✗ Drop', value: 'drop' },
+    ],
+  });
+
+  if (action === 'keep')  return { content: edited.trim(), is_axiom: false };
+  if (action === 'axiom') return { content: edited.trim(), is_axiom: true  };
+  return null;
 }
 
 // ─── resolve one entry ────────────────────────────────────────────────────────
 
+/**
+ * Returns true if the entry was resolved (removed from queue),
+ * false if the user chose to skip it.
+ */
 async function resolveEntry(
-  iface:   rl.Interface,
-  entry:   QueueEntry,
-  index:   number,
-  total:   number,
-): Promise<void> {
+  entry:  QueueEntry,
+  index:  number,
+  total:  number,
+): Promise<boolean> {
   displayEntry(entry, index, total);
 
-  const action = await iface.question('\n  [keep]  [drop]  [axiom]  [edit]: ');
-  const choice = action.trim().toLowerCase();
+  // Gate-failed entries get a simplified choice set
+  const isFailed  = entry.status === 'gate-failed';
+  const isPending = !entry.verdict;
+
+  if (isPending) return false; // still evaluating — skip silently
+
+  const choices = isFailed
+    ? [
+        { name: '✓ Keep as-is', value: 'keep'  },
+        { name: '✎ Edit',       value: 'edit'  },
+        { name: '⚡ Axiom',     value: 'axiom' },
+        { name: '✗ Drop',       value: 'drop'  },
+        { name: '→ Skip',       value: 'skip'  },
+      ]
+    : [
+        { name: `✓ Keep`,   value: 'keep'  },
+        { name: '✗ Drop',   value: 'drop'  },
+        { name: '⚡ Axiom', value: 'axiom' },
+        { name: '✎ Edit',   value: 'edit'  },
+        { name: '→ Skip',   value: 'skip'  },
+      ];
+
+  const choice = await select({ message: 'Decision:', choices });
 
   switch (choice) {
 
     case 'keep': {
-      const content = entry.verdict?.reformulation
-        ? await offerReformulation(iface, entry.verdict.reformulation, entry.content)
-        : entry.content;
+      const content = await chooseContent(entry);
       await captureThought(content, entry.source);
       console.log('  ✓ Stored.');
       removeEntry(entry.id);
-      break;
+      return true;
     }
 
     case 'axiom': {
-      const content = entry.verdict?.reformulation
-        ? await offerReformulation(iface, entry.verdict.reformulation, entry.content)
-        : entry.content;
+      const content = await chooseContent(entry);
       await captureThought(content, entry.source, 'veto');
       console.log('  ✓ Stored as axiom (permanent directive, confidence: 1.0).');
       removeEntry(entry.id);
-      break;
+      return true;
     }
 
     case 'drop': {
       console.log('  ✓ Discarded.');
       removeEntry(entry.id);
-      break;
+      return true;
     }
 
     case 'edit': {
-      const result = await runEditLoop(iface, entry);
+      const result = await runEditLoop(entry);
       if (!result) {
         console.log('  ✓ Discarded.');
-        removeEntry(entry.id);
       } else {
         await captureThought(result.content, entry.source, result.is_axiom ? 'veto' : undefined);
         console.log(result.is_axiom ? '  ✓ Stored as axiom.' : '  ✓ Stored.');
-        removeEntry(entry.id);
       }
-      break;
+      removeEntry(entry.id);
+      return true;
     }
 
-    default: {
-      console.log('  ? Unrecognised option — entry stays in queue.');
-      break;
-    }
+    case 'skip':
+    default:
+      console.log('  → Skipped (stays in queue).');
+      return false;
   }
 }
 
@@ -169,26 +202,27 @@ export async function runReview(): Promise<void> {
 
   console.log(`\n📋 Queue: ${ready.length} item${ready.length > 1 ? 's' : ''} to review`);
 
-  const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
+  let reviewed = 0;
 
-  try {
-    for (let i = 0; i < ready.length; i++) {
-      // Re-read queue each iteration; always take index 0 — entries are removed
-      // as we go, so incrementing i against a shrinking array would skip entries.
-      const current  = readQueue();
-      const readyNow = current.filter(e => e.status === 'evaluated' || e.status === 'gate-failed');
-      if (readyNow.length === 0) break;
-      await resolveEntry(iface, readyNow[0], i, ready.length);
-    }
-  } finally {
-    iface.close();
+  // Iterate over the fixed initial list by ID — re-read the queue each time
+  // so that entries removed by previous actions are naturally skipped.
+  for (let i = 0; i < ready.length; i++) {
+    const current = readQueue();
+    const entry   = current.find(e => e.id === ready[i].id);
+    if (!entry) continue; // already removed
+
+    const resolved = await resolveEntry(entry, i, ready.length);
+    if (resolved) reviewed++;
   }
 
-  const remaining = readQueue().length;
+  const remaining = readQueue().filter(
+    e => e.status === 'evaluated' || e.status === 'gate-failed',
+  ).length;
+
+  separator();
   if (remaining > 0) {
-    console.log(`\n${remaining} item${remaining > 1 ? 's' : ''} remain in queue.`);
+    console.log(`✓ Done. ${reviewed} stored  •  ${remaining} skipped (still in queue).`);
   } else {
-    separator();
-    console.log('✓ Queue cleared.');
+    console.log(`✓ Queue cleared. ${reviewed} thought${reviewed !== 1 ? 's' : ''} stored.`);
   }
 }

@@ -58,6 +58,7 @@ async function openrouterChat(
         { role: 'system', content: system },
         { role: 'user',   content: user   },
       ],
+      max_tokens:      1024,
       temperature:     0.3,
       ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
