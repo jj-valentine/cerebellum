@@ -49,7 +49,7 @@ export function enqueue(
 
   if (entries.length >= cfg.gate.queueMax) {
     throw new Error(
-      `Queue full (${cfg.gate.queueMax} items). Run 'brain review' to clear entries.`,
+      `Queue full (${cfg.gate.queueMax} items). Run 'memo review' to clear entries.`,
     );
   }
 

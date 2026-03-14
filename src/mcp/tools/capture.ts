@@ -35,7 +35,7 @@ export function registerCapture(server: McpServer) {
         return {
           content: [{
             type: 'text' as const,
-            text: `✓ Queued (${total} in queue)\n  Run 'brain review' to evaluate and store.`,
+            text: `✓ Queued (${total} in queue)\n  Run 'memo review' to evaluate and store.`,
           }],
         };
       } catch (err) {
