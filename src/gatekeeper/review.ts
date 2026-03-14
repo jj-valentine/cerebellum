@@ -1,4 +1,4 @@
-import { select, confirm, input } from '@inquirer/prompts';
+import { select, input } from '@inquirer/prompts';
 import { readQueue, removeEntry } from './queue.js';
 import { captureThought } from '../capture.js';
 import type { QueueEntry } from './types.js';
@@ -62,79 +62,71 @@ function displayEntry(entry: QueueEntry, index: number, total: number): void {
   console.log('');
 }
 
-// ─── reformulation prompt ─────────────────────────────────────────────────────
-
-async function chooseContent(entry: QueueEntry): Promise<string> {
-  if (!entry.verdict?.reformulation) return entry.content;
-
-  const useReformulated = await confirm({
-    message: 'Use the suggested reformulation?',
-    default: true,
-  });
-
-  return useReformulated ? entry.verdict.reformulation : entry.content;
-}
-
 // ─── edit loop ────────────────────────────────────────────────────────────────
 
+// Returns: { content, is_axiom } to store, null to drop, 'cancel' to go back to menu
 async function runEditLoop(
   entry: QueueEntry,
-): Promise<{ content: string; is_axiom: boolean } | null> {
+): Promise<{ content: string; is_axiom: boolean } | null | 'cancel'> {
+  let edited: string;
 
-  const edited = await input({
-    message: 'Paste improved version:',
-    validate: v => v.trim().length > 0 || 'Cannot be empty',
-  });
+  try {
+    edited = await input({ message: 'Paste improved version:' });
+  } catch {
+    // Esc pressed — go back to decision menu
+    return 'cancel';
+  }
+
+  if (!edited.trim()) return 'cancel';
 
   console.log(`\n  Using: "${edited.trim()}"\n`);
 
   const action = await select({
     message: 'What to do with the edited version?',
     choices: [
-      { name: '✓ Keep', value: 'keep' },
-      { name: '⚡ Axiom', value: 'axiom' },
-      { name: '✗ Drop', value: 'drop' },
+      { name: '✓ Keep',  value: 'keep'  },
+      { name: '★ Axiom', value: 'axiom' },
+      { name: '✗ Drop',  value: 'drop'  },
     ],
   });
 
   if (action === 'keep')  return { content: edited.trim(), is_axiom: false };
   if (action === 'axiom') return { content: edited.trim(), is_axiom: true  };
-  return null;
+  return null; // drop
 }
 
 // ─── resolve one entry ────────────────────────────────────────────────────────
 
 /**
  * Returns true if the entry was resolved (removed from queue),
- * false if the user chose to skip it.
+ * false if skipped.
  */
 async function resolveEntry(
-  entry:  QueueEntry,
-  index:  number,
-  total:  number,
+  entry: QueueEntry,
+  index: number,
+  total: number,
 ): Promise<boolean> {
   displayEntry(entry, index, total);
 
-  // Gate-failed entries get a simplified choice set
-  const isFailed  = entry.status === 'gate-failed';
-  const isPending = !entry.verdict;
+  // Only true-pending entries (still evaluating) get silently skipped
+  if (entry.status === 'pending') return false;
 
-  if (isPending) return false; // still evaluating — skip silently
+  const isFailed = entry.status === 'gate-failed';
 
   const choices = isFailed
     ? [
         { name: '✓ Keep as-is', value: 'keep'  },
         { name: '✎ Edit',       value: 'edit'  },
-        { name: '⚡ Axiom',     value: 'axiom' },
+        { name: '★ Axiom',      value: 'axiom' },
         { name: '✗ Drop',       value: 'drop'  },
         { name: '→ Skip',       value: 'skip'  },
       ]
     : [
-        { name: `✓ Keep`,   value: 'keep'  },
-        { name: '✗ Drop',   value: 'drop'  },
-        { name: '⚡ Axiom', value: 'axiom' },
-        { name: '✎ Edit',   value: 'edit'  },
-        { name: '→ Skip',   value: 'skip'  },
+        { name: '✓ Keep',  value: 'keep'  },
+        { name: '✗ Drop',  value: 'drop'  },
+        { name: '★ Axiom', value: 'axiom' },
+        { name: '✎ Edit',  value: 'edit'  },
+        { name: '→ Skip',  value: 'skip'  },
       ];
 
   const choice = await select({ message: 'Decision:', choices });
@@ -142,7 +134,9 @@ async function resolveEntry(
   switch (choice) {
 
     case 'keep': {
-      const content = await chooseContent(entry);
+      const content = entry.verdict?.reformulation
+        ? await _offerReformulation(entry.verdict.reformulation, entry.content)
+        : entry.content;
       await captureThought(content, entry.source);
       console.log('  ✓ Stored.');
       removeEntry(entry.id);
@@ -150,7 +144,9 @@ async function resolveEntry(
     }
 
     case 'axiom': {
-      const content = await chooseContent(entry);
+      const content = entry.verdict?.reformulation
+        ? await _offerReformulation(entry.verdict.reformulation, entry.content)
+        : entry.content;
       await captureThought(content, entry.source, 'veto');
       console.log('  ✓ Stored as axiom (permanent directive, confidence: 1.0).');
       removeEntry(entry.id);
@@ -165,6 +161,10 @@ async function resolveEntry(
 
     case 'edit': {
       const result = await runEditLoop(entry);
+      if (result === 'cancel') {
+        // Esc pressed — loop back to the decision menu
+        return resolveEntry(entry, index, total);
+      }
       if (!result) {
         console.log('  ✓ Discarded.');
       } else {
@@ -180,6 +180,17 @@ async function resolveEntry(
       console.log('  → Skipped (stays in queue).');
       return false;
   }
+}
+
+async function _offerReformulation(reformulation: string, original: string): Promise<string> {
+  const choice = await select({
+    message: 'Which version to store?',
+    choices: [
+      { name: `Suggested: "${reformulation}"`, value: 'reformulated' },
+      { name: `Original:  "${original}"`,      value: 'original'     },
+    ],
+  });
+  return choice === 'reformulated' ? reformulation : original;
 }
 
 // ─── public API ───────────────────────────────────────────────────────────────
@@ -204,8 +215,6 @@ export async function runReview(): Promise<void> {
 
   let reviewed = 0;
 
-  // Iterate over the fixed initial list by ID — re-read the queue each time
-  // so that entries removed by previous actions are naturally skipped.
   for (let i = 0; i < ready.length; i++) {
     const current = readQueue();
     const entry   = current.find(e => e.id === ready[i].id);

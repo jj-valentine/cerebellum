@@ -3,16 +3,16 @@
  * Cerebellum CLI
  *
  * Usage:
- *   brain "thought to capture"          Queue a thought for gatekeeper review
- *   brain --axiom "directive"           Queue as axiom (permanent hard directive)
- *   brain review                        Review queued thoughts one by one
- *   brain search "what was I thinking"  Semantic search
- *   brain recent [--days 7] [--limit 20]
- *   brain stats
- *   brain help
+ *   memo "thought to capture"          Queue a thought for gatekeeper review
+ *   memo --axiom "directive"           Queue as axiom (permanent hard directive)
+ *   memo review                        Review queued thoughts one by one
+ *   memo search "what was I thinking"  Semantic search
+ *   memo recent [--days 7] [--limit 20]
+ *   memo stats
+ *   memo help
  *
  * Setup alias:
- *   alias brain="node --import tsx/esm /Users/james/dev/new/cerebellum/src/cli/index.ts"
+ *   alias memo="node --import tsx/esm /Users/james/dev/new/cerebellum/src/cli/index.ts"
  */
 
 import { searchByEmbedding, listRecent, getStats } from '../db.js';
@@ -35,13 +35,13 @@ function print_help() {
   console.log(`
 cerebellum — personal second brain CLI
 
-  brain "thought"                   Queue a thought for gatekeeper review
-  brain --axiom "directive"         Queue as axiom (permanent directive)
-  brain review                      Review queued thoughts interactively
-  brain search "query"              Semantic search
-  brain recent                      List recent thoughts (--days N  --limit N)
-  brain stats                       Show thinking patterns
-  brain help                        Show this message
+  memo "thought"                   Queue a thought for gatekeeper review
+  memo --axiom "directive"         Queue as axiom (permanent directive)
+  memo review                      Review queued thoughts interactively
+  memo search "query"              Semantic search
+  memo recent                      List recent thoughts (--days N  --limit N)
+  memo stats                       Show thinking patterns
+  memo help                        Show this message
 `.trim());
 }
 
@@ -62,7 +62,7 @@ async function cmd_capture(text: string, is_axiom = false) {
   } else {
     console.log(`✓ Queued (${total} in queue)`);
   }
-  console.log(`  Run 'brain review' to evaluate and store.`);
+  console.log(`  Run 'memo review' to evaluate and store.`);
 }
 
 // ─── search ───────────────────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
 
 } else if (command === 'search') {
   const query = args[1];
-  if (!query) { console.error('Usage: brain search "query"'); process.exit(1); }
+  if (!query) { console.error('Usage: memo search "query"'); process.exit(1); }
   const limitFlag = args.indexOf('--limit');
   const limit     = limitFlag >= 0 ? parseIntSafe(args[limitFlag + 1], 10) : 10;
   await cmd_search(query, limit);
@@ -171,7 +171,7 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
 
 } else if (command === '--axiom') {
   const text = args.slice(1).join(' ');
-  if (!text) { console.error('Usage: brain --axiom "directive"'); process.exit(1); }
+  if (!text) { console.error('Usage: memo --axiom "directive"'); process.exit(1); }
   await cmd_capture(text, true);
 
 } else {

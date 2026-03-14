@@ -103,7 +103,8 @@ async function callGate(entry: QueueEntry): Promise<GatekeeperVerdict> {
   const userMessage     = buildUserMessage(entry.content, entry.capture_reason, similarThoughts);
 
   const raw  = await openrouterChat(cfg.gate.model, GATE_SYSTEM_PROMPT, userMessage);
-  const parsed = JSON.parse(raw) as unknown;
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  const parsed = JSON.parse(cleaned) as unknown;
   const verdict = VerdictSchema.parse(parsed);
 
   // Adversarial review for borderline items (score 4–7) with a reformulation
