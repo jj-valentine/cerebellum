@@ -98,23 +98,8 @@ async function runEditLoop(
 
 // ─── resolve one entry ────────────────────────────────────────────────────────
 
-/**
- * Returns true if the entry was resolved (removed from queue),
- * false if skipped.
- */
-async function resolveEntry(
-  entry: QueueEntry,
-  index: number,
-  total: number,
-): Promise<boolean> {
-  displayEntry(entry, index, total);
-
-  // Only true-pending entries (still evaluating) get silently skipped
-  if (entry.status === 'pending') return false;
-
-  const isFailed = entry.status === 'gate-failed';
-
-  const choices = isFailed
+function buildChoices(entry: QueueEntry) {
+  return entry.status === 'gate-failed'
     ? [
         { name: '↺ Retry gate', value: 'retry' },
         { name: '✓ Keep as-is', value: 'keep'  },
@@ -130,69 +115,85 @@ async function resolveEntry(
         { name: '✎ Edit',  value: 'edit'  },
         { name: '→ Skip',  value: 'skip'  },
       ];
+}
 
-  const choice = await select({ message: 'Decision:', choices });
+/**
+ * Returns true if the entry was resolved (removed from queue),
+ * false if skipped.
+ */
+async function resolveEntry(
+  entry: QueueEntry,
+  index: number,
+  total: number,
+): Promise<boolean> {
+  let current = entry;
 
-  switch (choice) {
+  while (true) {
+    displayEntry(current, index, total);
 
-    case 'retry': {
-      console.log('  ↺ Re-evaluating…');
-      await evaluate(entry);
-      const updated = readQueue().find(e => e.id === entry.id);
-      if (!updated) return false;
-      if (updated.status === 'evaluated') {
-        return resolveEntry(updated, index, total);
+    // Only true-pending entries (still evaluating) get silently skipped
+    if (current.status === 'pending') return false;
+
+    const choice = await select({ message: 'Decision:', choices: buildChoices(current) });
+
+    switch (choice) {
+
+      case 'retry': {
+        console.log('  ↺ Re-evaluating…');
+        await evaluate(current);
+        const updated = readQueue().find(e => e.id === current.id);
+        if (!updated) return false;
+        if (updated.status !== 'evaluated') {
+          console.log('  ⚠  Re-evaluation failed again. Make a manual call.');
+        }
+        current = updated;
+        continue;
       }
-      console.log('  ⚠  Re-evaluation failed again. Make a manual call.');
-      return resolveEntry({ ...updated }, index, total);
-    }
 
-    case 'keep': {
-      const content = entry.verdict?.reformulation
-        ? await _offerReformulation(entry.verdict.reformulation, entry.content)
-        : entry.content;
-      await captureThought(content, entry.source);
-      console.log('  ✓ Stored.');
-      removeEntry(entry.id);
-      return true;
-    }
-
-    case 'axiom': {
-      const content = entry.verdict?.reformulation
-        ? await _offerReformulation(entry.verdict.reformulation, entry.content)
-        : entry.content;
-      await captureThought(content, entry.source, 'veto');
-      console.log('  ✓ Stored as axiom (permanent directive, confidence: 1.0).');
-      removeEntry(entry.id);
-      return true;
-    }
-
-    case 'drop': {
-      console.log('  ✓ Discarded.');
-      removeEntry(entry.id);
-      return true;
-    }
-
-    case 'edit': {
-      const result = await runEditLoop(entry);
-      if (result === 'cancel') {
-        // Esc pressed — loop back to the decision menu
-        return resolveEntry(entry, index, total);
+      case 'keep': {
+        const content = current.verdict?.reformulation
+          ? await _offerReformulation(current.verdict.reformulation, current.content)
+          : current.content;
+        await captureThought(content, current.source);
+        console.log('  ✓ Stored.');
+        removeEntry(current.id);
+        return true;
       }
-      if (!result) {
+
+      case 'axiom': {
+        const content = current.verdict?.reformulation
+          ? await _offerReformulation(current.verdict.reformulation, current.content)
+          : current.content;
+        await captureThought(content, current.source, 'veto');
+        console.log('  ✓ Stored as axiom (permanent directive, confidence: 1.0).');
+        removeEntry(current.id);
+        return true;
+      }
+
+      case 'drop': {
         console.log('  ✓ Discarded.');
-      } else {
-        await captureThought(result.content, entry.source, result.is_axiom ? 'veto' : undefined);
-        console.log(result.is_axiom ? '  ✓ Stored as axiom.' : '  ✓ Stored.');
+        removeEntry(current.id);
+        return true;
       }
-      removeEntry(entry.id);
-      return true;
-    }
 
-    case 'skip':
-    default:
-      console.log('  → Skipped (stays in queue).');
-      return false;
+      case 'edit': {
+        const result = await runEditLoop(current);
+        if (result === 'cancel') continue; // Esc — loop back to decision menu
+        if (!result) {
+          console.log('  ✓ Discarded.');
+        } else {
+          await captureThought(result.content, current.source, result.is_axiom ? 'veto' : undefined);
+          console.log(result.is_axiom ? '  ✓ Stored as axiom.' : '  ✓ Stored.');
+        }
+        removeEntry(current.id);
+        return true;
+      }
+
+      case 'skip':
+      default:
+        console.log('  → Skipped (stays in queue).');
+        return false;
+    }
   }
 }
 

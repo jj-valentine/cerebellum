@@ -127,8 +127,20 @@ async function callGate(entry: QueueEntry): Promise<GatekeeperVerdict> {
  * Designed to run detached (fire-and-forget from the caller's perspective).
  *
  * Fail-open: on any error the entry is marked gate-failed (never silently lost).
+ *
+ * Evaluations are serialised via _evalChain to prevent concurrent
+ * read-modify-write races in updateVerdict under rapid back-to-back captures.
  */
-export async function evaluate(entry: QueueEntry): Promise<void> {
+let _evalChain: Promise<void> = Promise.resolve();
+
+export function evaluate(entry: QueueEntry): Promise<void> {
+  _evalChain = _evalChain
+    .then(() => _evaluateOne(entry))
+    .catch(() => {}); // prevent a failed evaluation from breaking the chain
+  return _evalChain;
+}
+
+async function _evaluateOne(entry: QueueEntry): Promise<void> {
   try {
     const verdict = await callGate(entry);
     updateVerdict(entry.id, verdict, 'evaluated');
