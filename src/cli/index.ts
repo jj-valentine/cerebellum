@@ -180,7 +180,12 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
     const dryRun = args.includes('--dry-run');
     const file = args.slice(1).find(a => !a.startsWith('--'));
     if (!file) { console.error('Usage: memo seed [--dry-run] <file.json>'); process.exit(1); }
-    await cmd_seed(file, dryRun);
+    try {
+      await cmd_seed(file, dryRun);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    }
   }
 
 } else if (command === '--axiom') {

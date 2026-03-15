@@ -10,8 +10,18 @@ export interface SeedEntry {
 }
 
 function parseFile(path: string): SeedEntry[] {
-  const raw = readFileSync(path, 'utf-8');
-  const parsed = JSON.parse(raw);
+  let raw: string;
+  try {
+    raw = readFileSync(path, 'utf-8');
+  } catch {
+    throw new Error(`Cannot read seed file: ${path}`);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`Invalid JSON in seed file: ${path}`);
+  }
   if (!Array.isArray(parsed)) throw new Error('Seed file must be a JSON array');
 
   for (const [i, entry] of parsed.entries()) {
