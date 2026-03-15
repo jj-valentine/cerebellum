@@ -26,7 +26,7 @@ export async function insertThought(
 export async function searchByEmbedding(
   embedding: number[],
   limit = 10,
-  threshold = 0.7,
+  threshold = 0.5,
 ): Promise<ThoughtWithSimilarity[]> {
   const { data, error } = await supabase.rpc('search_thoughts', {
     query_embedding: `[${embedding.join(',')}]`,
