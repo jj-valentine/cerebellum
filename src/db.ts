@@ -26,7 +26,7 @@ export async function insertThought(
 export async function searchByEmbedding(
   embedding: number[],
   limit = 10,
-  threshold = 0.7,
+  threshold = 0.5,
 ): Promise<ThoughtWithSimilarity[]> {
   const { data, error } = await supabase.rpc('search_thoughts', {
     query_embedding: `[${embedding.join(',')}]`,
@@ -54,6 +54,17 @@ export async function listRecent(
 
   if (error) throw new Error(`DB list failed: ${error.message}`);
   return (data ?? []) as Thought[];
+}
+
+export async function deleteBySource(sourcePrefix: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('thoughts')
+    .delete()
+    .like('source', `${sourcePrefix}%`)
+    .select('id');
+
+  if (error) throw new Error(`DB delete failed: ${error.message}`);
+  return data?.length ?? 0;
 }
 
 export async function getStats(): Promise<{

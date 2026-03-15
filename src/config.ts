@@ -1,6 +1,7 @@
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { homedir } from 'os';
 
 // Resolve .env relative to this file, not cwd — needed when spawned by MCP clients
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -29,5 +30,11 @@ export const cfg = {
   http: {
     apiKey: optional_env('CEREBELLUM_API_KEY', ''),
     port:   parseInt(optional_env('CEREBELLUM_PORT', '4891'), 10),
+  },
+  gate: {
+    model:       optional_env('GATE_MODEL',       'openai/gpt-4o-mini'),
+    queuePath:   optional_env('CEREBELLUM_QUEUE_PATH', join(homedir(), '.cerebellum', 'queue.json')),
+    queueMax:    parseInt(optional_env('GATE_QUEUE_MAX', '100'), 10),
+    adversarial: optional_env('GATE_ADVERSARIAL', 'true') !== 'false',
   },
 } as const;

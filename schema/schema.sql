@@ -21,11 +21,15 @@ create table if not exists thoughts (
 
 -- metadata shape:
 -- {
---   "type":         "observation" | "task" | "idea" | "reference" | "person_note",
+--   "type":         "observation" | "task" | "idea" | "reference" | "person_note" | "veto",
 --   "topics":       string[],   -- 1–3 tags
 --   "people":       string[],   -- mentioned names
 --   "action_items": string[]    -- implied next actions
 -- }
+--
+-- type "veto" = Axiom — a permanent directive declared by the user.
+-- Axioms have confidence=1.0 (never decays) and are surfaced first at session start.
+-- Agents must treat axiom thoughts as inviolable constraints.
 
 -- 3. Cosine similarity index (HNSW)
 -- HNSW builds incrementally — safe to create on empty tables, no minimum row count.
