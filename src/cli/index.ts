@@ -20,7 +20,7 @@ import { searchByEmbedding, listRecent, getStats } from '../db.js';
 import { generateEmbedding } from '../embeddings.js';
 import { enqueue, readQueue } from '../gatekeeper/queue.js';
 import { evaluate } from '../gatekeeper/index.js';
-import { runReview } from '../gatekeeper/review.js';
+import { runReview, runAuto } from '../gatekeeper/review.js';
 import { intake } from '../operator/index.js';
 import { cmd_seed, cmd_seed_undo } from './seed.js';
 import { cmd_import } from './import.js';
@@ -43,6 +43,7 @@ cerebellum — personal second brain CLI
   memo "thought"                   Route through Operator → GK queue
   memo --axiom "directive"         Bypass Operator → GK queue as axiom
   memo review                      Review queued thoughts interactively
+  memo review --auto               Auto-accept high-score, auto-drop noise
   memo web                         Inspect/force-synthesise/discard held entries
   memo search "query"              Semantic search
   memo recent                      List recent thoughts (--days N  --limit N)
@@ -166,7 +167,11 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
   print_help();
 
 } else if (command === 'review') {
-  await runReview();
+  if (args.includes('--auto')) {
+    await runAuto();
+  } else {
+    await runReview();
+  }
 
 } else if (command === 'web') {
   await runWebReview();
