@@ -1,4 +1,4 @@
-import { select } from '@inquirer/prompts';
+import { select, confirm } from '@inquirer/prompts';
 import { readQueue, removeEntry } from './queue.js';
 import { evaluate } from './index.js';
 import { captureThought } from '../capture.js';
@@ -196,6 +196,126 @@ async function _offerReformulation(
   }
   if (choice === 'back') return { tag: 'back' };
   return { tag: 'content', value: choice === 'reformulated' ? reformulation : original };
+}
+
+// ─── auto mode ───────────────────────────────────────────────────────────────
+
+interface FlushBucket {
+  accept:  QueueEntry[];
+  drop:    QueueEntry[];
+  review:  QueueEntry[];
+  pending: QueueEntry[];
+}
+
+function classifyForFlush(entries: QueueEntry[]): FlushBucket {
+  const result: FlushBucket = { accept: [], drop: [], review: [], pending: [] };
+
+  for (const entry of entries) {
+    if (entry.status === 'pending' || entry.status === 'gate-failed') {
+      result.pending.push(entry);
+      continue;
+    }
+
+    const v = entry.verdict;
+    if (!v) { result.review.push(entry); continue; }
+
+    const { recommendation, quality_score } = v;
+
+    if (recommendation === 'axiom') {
+      result.accept.push(entry);
+    } else if (recommendation === 'keep' && quality_score >= 5) {
+      result.accept.push(entry);
+    } else if (recommendation === 'improve' && v.reformulation && quality_score >= 5) {
+      result.accept.push(entry);
+    } else if (recommendation === 'drop' || quality_score <= 3) {
+      result.drop.push(entry);
+    } else {
+      result.review.push(entry);
+    }
+  }
+
+  return result;
+}
+
+export async function runAuto(): Promise<void> {
+  const allEntries = readQueue();
+  if (!allEntries.length) {
+    console.log('\nNo items in queue.');
+    return;
+  }
+
+  const buckets = classifyForFlush(allEntries);
+
+  separator();
+  console.log('  Queue auto analysis:\n');
+  console.log(`    ✓ Auto-accept:     ${buckets.accept.length} entries`);
+  console.log(`    ✗ Auto-drop:       ${buckets.drop.length} entries`);
+  console.log(`    → Needs review:    ${buckets.review.length} entries`);
+  console.log(`    ⏳ Unevaluated:    ${buckets.pending.length} entries`);
+  console.log(`\n    Net: ${buckets.accept.length} stored, ${buckets.drop.length} dropped, ${buckets.review.length + buckets.pending.length} remaining`);
+  separator();
+
+  if (!buckets.accept.length && !buckets.drop.length) {
+    console.log('\nNothing to auto-process. Run `memo review` for manual review.');
+    return;
+  }
+
+  if (buckets.accept.length) {
+    console.log('\n  Will accept:\n');
+    for (const entry of buckets.accept) {
+      const v = entry.verdict!;
+      const content = (v.recommendation === 'improve' && v.reformulation) ? v.reformulation : entry.content;
+      const tag = v.recommendation === 'axiom' ? '⚡' : v.reformulation ? '↻' : '✓';
+      console.log(`    ${tag} [${v.quality_score}/10 ${v.recommendation}] ${content.slice(0, 100)}${content.length > 100 ? '…' : ''}`);
+    }
+  }
+
+  if (buckets.drop.length) {
+    console.log('\n  Will drop:\n');
+    for (const entry of buckets.drop) {
+      const score = entry.verdict?.quality_score ?? '?';
+      console.log(`    ✗ [${score}/10] ${entry.content.slice(0, 100)}${entry.content.length > 100 ? '…' : ''}`);
+    }
+  }
+
+  console.log('');
+  const proceed = await confirm({ message: 'Proceed with auto?', default: false });
+  if (!proceed) {
+    console.log('  Aborted.');
+    return;
+  }
+
+  let stored = 0;
+  let errors = 0;
+  for (const entry of buckets.accept) {
+    const v = entry.verdict!;
+    const content = (v.recommendation === 'improve' && v.reformulation) ? v.reformulation : entry.content;
+    const typeOverride = v.recommendation === 'axiom' ? 'axiom' as const : undefined;
+
+    try {
+      await captureThought(content, entry.source, typeOverride);
+      removeEntry(entry.id);
+      stored++;
+      process.stdout.write(`  ✓ ${stored}/${buckets.accept.length}\r`);
+    } catch (err) {
+      errors++;
+      console.error(`  ✗ Failed to store entry ${entry.id}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  let dropped = 0;
+  for (const entry of buckets.drop) {
+    removeEntry(entry.id);
+    dropped++;
+  }
+
+  separator();
+  console.log(`  ✓ Flush complete: ${stored} stored, ${dropped} dropped${errors ? `, ${errors} errors` : ''}`);
+
+  const remaining = readQueue().length;
+  if (remaining > 0) {
+    console.log(`  ${remaining} entries remain in queue (run \`memo review\` for manual review).`);
+  }
 }
 
 // ─── public API ───────────────────────────────────────────────────────────────
