@@ -211,13 +211,21 @@ function classifyForFlush(entries: QueueEntry[]): FlushBucket {
   const result: FlushBucket = { accept: [], drop: [], review: [], pending: [] };
 
   for (const entry of entries) {
-    if (entry.status === 'pending' || entry.status === 'gate-failed') {
+    if (entry.status === 'pending') {
       result.pending.push(entry);
+      continue;
+    }
+    if (entry.status === 'gate-failed') {
+      result.review.push(entry);
       continue;
     }
 
     const v = entry.verdict;
     if (!v) { result.review.push(entry); continue; }
+
+    const hasHardContradiction = v.contradiction &&
+      (v.contradiction.severity === 'hard' || v.contradiction.severity === 'axiom_violation');
+    if (hasHardContradiction) { result.review.push(entry); continue; }
 
     const { recommendation, quality_score } = v;
 
@@ -305,8 +313,13 @@ export async function runAuto(): Promise<void> {
 
   let dropped = 0;
   for (const entry of buckets.drop) {
-    removeEntry(entry.id);
-    dropped++;
+    try {
+      removeEntry(entry.id);
+      dropped++;
+    } catch (err) {
+      errors++;
+      console.error(`  ✗ Failed to drop entry ${entry.id}: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   separator();
