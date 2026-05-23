@@ -336,6 +336,13 @@ export async function runAuto(): Promise<void> {
 
     try {
       await captureThought(content, entry.source, typeOverride);
+      emit({
+        event: 'review_action',
+        action: v.recommendation === 'axiom' ? 'axiom' : (v.reformulation ? 'reformulate' : 'keep'),
+        gate_score: v.quality_score,
+        agreed_with_gate: true,
+        auto: true,
+      });
       removeEntry(entry.id);
       stored++;
       process.stdout.write(`  ✓ ${stored}/${buckets.accept.length}\r`);
@@ -348,6 +355,13 @@ export async function runAuto(): Promise<void> {
   let dropped = 0;
   for (const entry of buckets.drop) {
     try {
+      emit({
+        event: 'review_action',
+        action: 'drop',
+        gate_score: entry.verdict?.quality_score ?? -1,
+        agreed_with_gate: true,
+        auto: true,
+      });
       removeEntry(entry.id);
       dropped++;
     } catch (err) {
