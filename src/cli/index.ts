@@ -6,6 +6,7 @@
  *   memo "thought to capture"          Route through Operator → GK queue
  *   memo --axiom "directive"           Bypass Operator → GK queue as axiom
  *   memo review                        Review queued thoughts one by one
+ *   memo review --auto                 Auto-accept high-score, auto-drop noise
  *   memo web                           Inspect/force-synthesise/discard held web entries
  *   memo search "what was I thinking"  Semantic search
  *   memo recent [--days 7] [--limit 20]
@@ -30,7 +31,7 @@ const { searchByEmbedding, listRecent, getStats, truncateTestTable } = await imp
 const { generateEmbedding } = await import('../embeddings.js');
 const { enqueue, readQueue } = await import('../gatekeeper/queue.js');
 const { evaluate } = await import('../gatekeeper/index.js');
-const { runReview } = await import('../gatekeeper/review.js');
+const { runReview, runAuto } = await import('../gatekeeper/review.js');
 const { intake } = await import('../operator/index.js');
 const { cmd_seed, cmd_seed_undo } = await import('./seed.js');
 const { cmd_import } = await import('./import.js');
@@ -83,12 +84,14 @@ async function cmd_capture(text: string, is_axiom = false) {
   if (is_axiom) {
     // --axiom bypasses Operator entirely → straight to GK
     const entry = enqueue(text, 'cli', undefined, true);
-    evaluate(entry).catch(err =>
-      console.error('[gate] background evaluation error:', err),
-    );
     const total = readQueue().length;
     console.log(`⚡ Queued as axiom (${total} in queue)`);
-    console.log(`  Run 'memo review' to evaluate and store.`);
+    try {
+      await evaluate(entry);
+      console.log(`  ✓ Evaluated. Run 'memo review' to store.`);
+    } catch {
+      console.log(`  ⏳ Evaluation failed — run 'memo review' to make a manual call.`);
+    }
   } else {
     // Normal capture → Operator (holds in web.json, evaluates async)
     await intake(text, 'cli');
@@ -184,7 +187,11 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
   print_help();
 
 } else if (command === 'review') {
-  await runReview();
+  if (args.includes('--auto')) {
+    await runAuto();
+  } else {
+    await runReview();
+  }
 
 } else if (command === 'web') {
   await runWebReview();
