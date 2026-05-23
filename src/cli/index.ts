@@ -36,6 +36,7 @@ const { intake } = await import('../operator/index.js');
 const { cmd_seed, cmd_seed_undo } = await import('./seed.js');
 const { cmd_import } = await import('./import.js');
 const { runWebReview } = await import('./web.js');
+const { emit, flushTelemetry } = await import('../telemetry.js');
 
 if (cfg.env === 'test') {
   process.stderr.write('⚠ TEST MODE — using sandbox queue + thoughts_test table\n');
@@ -105,6 +106,17 @@ async function cmd_capture(text: string, is_axiom = false) {
 async function cmd_search(query: string, limit = 10) {
   const embedding = await generateEmbedding(query);
   const results   = await searchByEmbedding(embedding, limit);
+
+  for (const [i, t] of results.entries()) {
+    emit({
+      event: 'thought_retrieved',
+      thought_id: t.id,
+      query,
+      rank: i + 1,
+      score: t.similarity ?? 0,
+      source: 'cli',
+    });
+  }
 
   if (!results.length) {
     console.log('No matching thoughts found.');
@@ -289,10 +301,12 @@ if (!command || command === 'help' || command === '--help' || command === '-h') 
 
 } catch (err) {
   if (err instanceof Error && err.name === 'ExitPromptError') {
+    flushTelemetry();
     process.exit(0);
   }
   throw err;
 }
 
 // Exit cleanly — don't hang on fire-and-forget async evaluations
+flushTelemetry();
 process.exit(0);
