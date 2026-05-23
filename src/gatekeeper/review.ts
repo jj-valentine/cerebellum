@@ -229,7 +229,7 @@ function classifyForFlush(entries: QueueEntry[]): FlushBucket {
 
     const { recommendation, quality_score } = v;
 
-    if (recommendation === 'axiom') {
+    if (entry.is_axiom || recommendation === 'axiom') {
       result.accept.push(entry);
     } else if (recommendation === 'keep' && quality_score >= 5) {
       result.accept.push(entry);
