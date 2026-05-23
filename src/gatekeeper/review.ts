@@ -273,7 +273,8 @@ export async function runAuto(): Promise<void> {
     for (const entry of buckets.accept) {
       const v = entry.verdict!;
       const content = (v.recommendation === 'improve' && v.reformulation) ? v.reformulation : entry.content;
-      const tag = v.recommendation === 'axiom' ? '⚡' : v.reformulation ? '↻' : '✓';
+      const usesReformulation = v.recommendation === 'improve' && !!v.reformulation;
+      const tag = v.recommendation === 'axiom' ? '⚡' : usesReformulation ? '↻' : '✓';
       console.log(`    ${tag} [${v.quality_score}/10 ${v.recommendation}] ${content.slice(0, 100)}${content.length > 100 ? '…' : ''}`);
     }
   }
