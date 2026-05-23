@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { generateEmbedding } from '../../embeddings.js';
 import { searchByEmbedding } from '../../db.js';
+import { emit } from '../../telemetry.js';
 
 export function registerSemanticSearch(server: McpServer) {
   server.registerTool(
@@ -20,6 +21,17 @@ export function registerSemanticSearch(server: McpServer) {
       try {
         const embedding = await generateEmbedding(query);
         const results = await searchByEmbedding(embedding, limit ?? 10);
+
+        for (const [i, t] of results.entries()) {
+          emit({
+            event: 'thought_retrieved',
+            thought_id: t.id,
+            query,
+            rank: i + 1,
+            score: t.similarity ?? 0,
+            source: 'mcp',
+          });
+        }
 
         if (!results.length) {
           return {

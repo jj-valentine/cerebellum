@@ -5,12 +5,22 @@ import { captureThought } from '../capture.js';
 import { keypress } from '../cli/keypress.js';
 import type { KeyChoice } from '../cli/keypress.js';
 import type { QueueEntry } from './types.js';
+import { emit } from '../telemetry.js';
 
 type ReviewAction = 'keep' | 'drop' | 'axiom' | 'skip' | 'quit' | 'retry';
 
 // ─── display helpers ──────────────────────────────────────────────────────────
 
 function separator() { console.log(`\n${'─'.repeat(62)}`); }
+
+function agreedWithGate(action: 'keep' | 'drop' | 'axiom', entry: QueueEntry): boolean {
+  const rec = entry.verdict?.recommendation;
+  if (!rec) return false;
+  if (action === 'drop') return rec === 'drop';
+  if (action === 'axiom') return rec === 'axiom' || rec === 'keep';
+  // action === 'keep'
+  return rec === 'keep' || rec === 'improve';
+}
 
 function displayEntry(entry: QueueEntry, index: number, total: number): void {
   const { verdict, status, source, capture_reason, content, is_axiom } = entry;
@@ -126,13 +136,22 @@ async function resolveEntry(
       }
 
       case 'keep': {
+        let usedReformulation = false;
         if (current.verdict?.reformulation) {
           const result = await _offerReformulation(current.verdict.reformulation, current.content);
           if (result.tag === 'back') continue;
+          usedReformulation = result.value === current.verdict.reformulation;
           await captureThought(result.value, current.source);
         } else {
           await captureThought(current.content, current.source);
         }
+        emit({
+          event: 'review_action',
+          action: usedReformulation ? 'reformulate' : 'keep',
+          gate_score: current.verdict?.quality_score ?? -1,
+          agreed_with_gate: agreedWithGate('keep', current),
+          auto: false,
+        });
         process.stdout.write(' → ✓ Stored.\n');
         removeEntry(current.id);
         return true;
@@ -146,12 +165,26 @@ async function resolveEntry(
         } else {
           await captureThought(current.content, current.source, 'axiom');
         }
+        emit({
+          event: 'review_action',
+          action: 'axiom',
+          gate_score: current.verdict?.quality_score ?? -1,
+          agreed_with_gate: agreedWithGate('axiom', current),
+          auto: false,
+        });
         process.stdout.write(' → ✓ Stored as axiom.\n');
         removeEntry(current.id);
         return true;
       }
 
       case 'drop': {
+        emit({
+          event: 'review_action',
+          action: 'drop',
+          gate_score: current.verdict?.quality_score ?? -1,
+          agreed_with_gate: agreedWithGate('drop', current),
+          auto: false,
+        });
         process.stdout.write(' → ✓ Discarded.\n');
         removeEntry(current.id);
         return true;
@@ -303,6 +336,13 @@ export async function runAuto(): Promise<void> {
 
     try {
       await captureThought(content, entry.source, typeOverride);
+      emit({
+        event: 'review_action',
+        action: v.recommendation === 'axiom' ? 'axiom' : (v.reformulation ? 'reformulate' : 'keep'),
+        gate_score: v.quality_score,
+        agreed_with_gate: true,
+        auto: true,
+      });
       removeEntry(entry.id);
       stored++;
       process.stdout.write(`  ✓ ${stored}/${buckets.accept.length}\r`);
@@ -315,6 +355,13 @@ export async function runAuto(): Promise<void> {
   let dropped = 0;
   for (const entry of buckets.drop) {
     try {
+      emit({
+        event: 'review_action',
+        action: 'drop',
+        gate_score: entry.verdict?.quality_score ?? -1,
+        agreed_with_gate: true,
+        auto: true,
+      });
       removeEntry(entry.id);
       dropped++;
     } catch (err) {

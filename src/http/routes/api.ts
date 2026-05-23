@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { captureThought } from '../../capture.js';
 import { searchByEmbedding, listRecent, getStats } from '../../db.js';
 import { generateEmbedding } from '../../embeddings.js';
+import { emit } from '../../telemetry.js';
 
 export const router = Router();
 
@@ -66,6 +67,17 @@ router.get('/search', async (req: Request, res: Response) => {
 
     // Search by embedding
     const results = await searchByEmbedding(embedding, searchLimit, searchThreshold);
+
+    for (const [i, t] of results.entries()) {
+      emit({
+        event: 'thought_retrieved',
+        thought_id: t.id,
+        query: q,
+        rank: i + 1,
+        score: t.similarity ?? 0,
+        source: 'api',
+      });
+    }
 
     res.json({ results });
   } catch (err) {

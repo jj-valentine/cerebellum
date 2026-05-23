@@ -23,3 +23,10 @@ assets/logo-variants-preview.png
 logo-preview.png
 logo-v1-animated.png
 logo-variants.png
+
+# Tool configs
+.codex/
+.playwright-mcp/
+
+# Working files
+CHANGELOG.md

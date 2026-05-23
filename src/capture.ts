@@ -3,6 +3,7 @@ import { classifyThought } from './classify.js';
 import { insertThought } from './db.js';
 import { withRetry } from './utils/retry.js';
 import { cfg } from './config.js';
+import { emit } from './telemetry.js';
 import type { Thought, ThoughtType } from './types.js';
 
 const MAX_CHARS = 30_000;
@@ -47,6 +48,7 @@ export async function captureThought(
   }
 
   const thought = await insertThought(trimmed, embedding, metadata, source, cfg.openrouter.embeddingModel);
+  emit({ event: 'thought_stored', thought_id: thought.id, source });
   const elapsed_ms = Date.now() - start;
 
   return { thought, elapsed_ms };
