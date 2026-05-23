@@ -49,7 +49,7 @@ function getLogger(): pino.Logger | null {
     const now = new Date();
     const filename = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.jsonl`;
 
-    const dest = pino.destination({ dest: join(dir, filename), sync: false });
+    const dest = pino.destination({ dest: join(dir, filename), sync: true });
     const log = pino(
       { base: undefined, timestamp: () => `,"ts":"${new Date().toISOString()}"` },
       dest,
@@ -72,7 +72,11 @@ export function emit(event: TelemetryEvent): void {
 }
 
 export function flushTelemetry(): void {
-  if (destination && typeof (destination as any).flushSync === 'function') {
-    (destination as any).flushSync();
+  try {
+    if (destination && typeof (destination as any).flushSync === 'function') {
+      (destination as any).flushSync();
+    }
+  } catch {
+    // Best-effort flush — sync mode writes immediately anyway
   }
 }
