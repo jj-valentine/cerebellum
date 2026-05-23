@@ -60,4 +60,8 @@ export const cfg = {
     pipeline: optional_env('IMPORT_PIPELINE', 'full') as 'direct' | 'gk' | 'full',
     model:    optional_env('IMPORT_MODEL', optional_env('GATE_MODEL', 'openai/gpt-4o-mini')),
   },
+  telemetry: {
+    enabled: optional_env('CEREBELLUM_TELEMETRY', 'true') === 'true',
+    dir:     optional_env('CEREBELLUM_TELEMETRY_DIR', join(homedir(), '.cerebellum', 'telemetry')),
+  },
 } as const;
